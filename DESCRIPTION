@@ -20,6 +20,7 @@ Imports:
   methylKit,
   GenomicRanges,
   IRanges,
+  S4Vectors,
   methods,
   glmmTMB
 License: MIT + file LICENSE

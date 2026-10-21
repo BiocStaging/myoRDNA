@@ -9,19 +9,15 @@ methylation levels and identifying differential methylation
 between experimental conditions.
 
 ## Installation
-Given that this package is currently under development installation must 
-performed using devtools.
-Please implement the following commands in the R terminal:
-```
-install.packages("devtools")
-```
-Once installation has completed
-```
-# Load devtools
-library(devtools)
 
-# Install the package from GitHub
-install_github("MuscleOmicsLab/myoRDNA", branch = "main")
+Install **myoRDNA** from Bioconductor using **BiocManager**:
+
+```{r installation, eval=FALSE}
+if (!requireNamespace("BiocManager", quietly = TRUE)) {
+    install.packages("BiocManager")
+}
+
+BiocManager::install("myoRDNA")
 
 # Load the package
 library(myoRDNA)

@@ -129,7 +129,7 @@ The example data are distributed with `myoRDNA` in the
 We use `system.file()` to retrieve the location of the dataset
 within the installed package. This approach ensures that the
 example works regardless of where the package is installed.
-```{r load-data}
+```{r load-data, message = FALSE, warning = FALSE}
 library(myoRDNA)
 library(methylKit)
 

@@ -96,78 +96,50 @@ absolute_rDNA_CN <- function(
     rDNA_chr,
     diploid = TRUE)
 {
-  # Initialize a dataframe to store results
-  results_df <- data.frame(
-    Sample_ID = character(),
-    Genome_Depth = numeric(),
-    rDNA_Depth = numeric(),
-    Absolute_rDNA_CN = numeric(),
-    stringsAsFactors = FALSE
+  # Initialise a Bioconductor DataFrame with one row per sample
+  results_df <- S4Vectors::DataFrame(
+    Sample_ID = character(num_samples),
+    Genome_Depth = numeric(num_samples),
+    rDNA_Depth = numeric(num_samples),
+    Absolute_rDNA_CN = numeric(num_samples)
   )
 
-  if (autosomes == TRUE)
+  ploidy_factor <- if (diploid) 2 else 1
+
+  for (i in seq_len(num_samples))
   {
-    for (i in seq_len(num_samples))
+    # Retrieve sample data using the methylKit accessor
+    sample_data <- methylKit::getData(Meth_object[[i]])
+
+    if (autosomes)
     {
-      chr_data <- Meth_object[[i]][
-        sub("^chr", "", Meth_object[[i]]$chr) %in%
+      chr_data <- sample_data[
+        sub("^chr", "", sample_data$chr) %in%
           as.character(seq_len(19)),
+        ,
+        drop = FALSE
       ]
-      rDNA_data <- Meth_object[[i]][Meth_object[[i]]$chr == rDNA_chr, ]
-      cov_wgenome <- mean(chr_data$coverage, na.rm = TRUE)
-      cov_rDNA <- mean(rDNA_data$coverage, na.rm = TRUE)
-
-      if (diploid == TRUE)
-      {
-        abs_rDNA_CN <- 2.0 * (cov_rDNA / cov_wgenome)
-      } else
-      {
-        abs_rDNA_CN <- (cov_rDNA / cov_wgenome)
-      }
-
-      # Append results to the dataframe
-      results_df <- rbind(
-        results_df,
-        data.frame(
-          Sample_ID = Meth_object[[i]]@sample.id,
-          Genome_Depth = cov_wgenome,
-          rDNA_Depth = cov_rDNA,
-          Absolute_rDNA_CN = abs_rDNA_CN,
-          stringsAsFactors = FALSE
-        )
-      )
-    }
-  } else
-  {
-    for (i in seq_len(num_samples))
+    } else
     {
-      chr_data <- Meth_object[[i]]
-      rDNA_data <- Meth_object[[i]][Meth_object[[i]]$chr == rDNA_chr, ]
-      cov_wgenome <- mean(chr_data$coverage, na.rm = TRUE)
-      cov_rDNA <- mean(rDNA_data$coverage, na.rm = TRUE)
-
-      if (diploid == TRUE)
-      {
-        abs_rDNA_CN <- 2.0 * (cov_rDNA / cov_wgenome)
-      } else
-      {
-        abs_rDNA_CN <- (cov_rDNA / cov_wgenome)
-      }
-
-      # Append results to the dataframe
-      results_df <- rbind(
-        results_df,
-        data.frame(
-          Sample_ID = Meth_object[[i]]@sample.id,
-          Genome_Depth = cov_wgenome,
-          rDNA_Depth = cov_rDNA,
-          Absolute_rDNA_CN = abs_rDNA_CN,
-          stringsAsFactors = FALSE
-        )
-      )
+      chr_data <- sample_data
     }
+
+    rDNA_data <- sample_data[
+      sample_data$chr %in% rDNA_chr,
+      ,
+      drop = FALSE
+    ]
+
+    cov_wgenome <- mean(chr_data$coverage, na.rm = TRUE)
+    cov_rDNA <- mean(rDNA_data$coverage, na.rm = TRUE)
+
+    results_df$Sample_ID[i] <-
+      methylKit::getSampleID(Meth_object[[i]])
+    results_df$Genome_Depth[i] <- cov_wgenome
+    results_df$rDNA_Depth[i] <- cov_rDNA
+    results_df$Absolute_rDNA_CN[i] <-
+      ploidy_factor * cov_rDNA / cov_wgenome
   }
 
-  # Return the dataframe
   return(results_df)
 }
