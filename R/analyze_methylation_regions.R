@@ -28,24 +28,50 @@ analyze_methylation_regions <- function(
     region_res,
     samples,
     model_type = "beta-binomial",
-    p_adjust_method = "BH"
-) {
-  # Define regions from the names of region_res[[1]]
+    p_adjust_method = "BH")
+{
+  # Basic input checks
+  if (!is.list(region_res) ||
+      is.data.frame(region_res) ||
+      length(region_res) == 0L) {
+    stop("'region_res' must be a non-empty list.", call. = FALSE)
+  }
+  
+  if (missing(samples) || length(samples) == 0L) {
+    stop("'samples' must be supplied and must not be empty.",
+         call. = FALSE)
+  }
+  
+  if (!is.character(model_type) ||
+      length(model_type) != 1L ||
+      is.na(model_type) ||
+      !nzchar(model_type)) {
+    stop("'model_type' must be a single non-empty character string.",
+         call. = FALSE)
+  }
+  
+  if (!is.character(p_adjust_method) ||
+      length(p_adjust_method) != 1L ||
+      is.na(p_adjust_method) ||
+      !p_adjust_method %in% stats::p.adjust.methods) {
+    stop("'p_adjust_method' must be a valid p-value adjustment method.",
+         call. = FALSE)
+  }
+  
+  # Define regions
   regions <- names(region_res[[1]])
-
-  # Initialize an empty data frame to store results
-  out_results <- data.frame(
+  
+  # Initialise the results
+  out_results <- S4Vectors::DataFrame(
     region = character(),
     beta_0 = numeric(),
     beta_1 = numeric(),
     p_value = numeric(),
     p_adjust = numeric(),
-    meth_diff = numeric(),
-    stringsAsFactors = FALSE
+    meth_diff = numeric()
   )
-
-  # Loop over each region
-  for (reg in regions) {
+  
+  region_results <- lapply(regions, function(reg) {
     results <- diff_meth_region(
       region_res = region_res,
       region = reg,
@@ -53,20 +79,29 @@ analyze_methylation_regions <- function(
       model_type = model_type,
       p_adjust_method = p_adjust_method
     )
-
-    # Add the region name to the results
-    results$region <- reg
-
-    # Append results to out_results
-    out_results <- rbind(out_results, results)
+    
+    results <- S4Vectors::DataFrame(results)
+    results$region <- rep(reg, nrow(results))
+    
+    return(results)
+  })
+  
+  if (length(region_results) > 0L) {
+    out_results <- do.call(rbind, unname(region_results))
   }
-
-  # Multiple-testing correction
+  
+  # Multiple-testing correction across regions
   out_results$p_adjust <- stats::p.adjust(
     out_results$p_value,
     method = p_adjust_method
   )
-
-  # Return the combined results
+  
+  out_results <- out_results[
+    ,
+    c("region", "beta_0", "beta_1",
+      "p_value", "p_adjust", "meth_diff"),
+    drop = FALSE
+  ]
+  
   return(out_results)
 }

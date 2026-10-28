@@ -19,41 +19,80 @@
 #'   specified region.}
 #' }
 #'
-aggregate_numCs_numTs_region <- function(region_res, region, conditions,
-                                     med = FALSE) {
-  # Initialize an empty dataframe to store results
-  result_df <- data.frame(
-    Sample_ID = character(),
-    Condition = character(),
-    aggregate_numCs = numeric(),
-    aggregate_numTs = numeric(),
-    stringsAsFactors = FALSE
+aggregate_numCs_numTs_region <- function(
+    region_res,
+    region,
+    conditions)
+{
+  if (!is.list(region_res)) {
+    stop("'region_res' must be a list.", call. = FALSE)
+  }
+  
+  if (!is.character(region) ||
+      length(region) != 1L ||
+      is.na(region) ||
+      !nzchar(region)) {
+    stop("'region' must be a single non-empty character string.",
+         call. = FALSE)
+  }
+  
+  if (!is.list(conditions) || length(conditions) == 0L) {
+    stop("'conditions' must be a non-empty named list.",
+         call. = FALSE)
+  }
+  
+  condition_names <- names(conditions)
+  
+  if (is.null(condition_names) ||
+      anyNA(condition_names) ||
+      any(!nzchar(condition_names)) ||
+      anyDuplicated(condition_names) > 0L) {
+    stop("'conditions' must have unique, non-empty names.",
+         call. = FALSE)
+  }
+  
+  valid_samples <- vapply(
+    conditions,
+    function(x) {
+      is.character(x) &&
+        length(x) > 0L &&
+        !anyNA(x) &&
+        all(nzchar(x))
+    },
+    logical(1)
   )
-
-  # Iterate over each condition and its samples
-  for (condition in names(conditions)) {
+  
+  if (!all(valid_samples)) {
+    stop("Each condition must contain a non-empty character vector", 
+         "of sample IDs.",
+         call. = FALSE)
+  }
+  
+  n_samples <- sum(lengths(conditions))
+  
+  result_df <- S4Vectors::DataFrame(
+    Sample_ID = character(n_samples),
+    Condition = character(n_samples),
+    aggregate_numCs = numeric(n_samples),
+    aggregate_numTs = numeric(n_samples)
+  )
+  
+  i <- 0L
+  
+  for (condition in condition_names) {
     for (sam in conditions[[condition]]) {
-      # Extract numCs and coverage for the specified region
-      numCs <- region_res[[sam]][[region]]$numCs
-      numTs <- region_res[[sam]][[region]]$numTs
-
-      aggregate_numCs <- sum(numCs, na.rm = TRUE)
-      aggregate_numTs <- sum(numTs, na.rm = TRUE)
+      region_data <- region_res[[sam]][[region]]
       
-      # Append the results to the dataframe
-      result_df <- rbind(
-        result_df,
-        data.frame(
-          Sample_ID = sam,
-          Condition = condition,
-          aggregate_numCs = aggregate_numCs,
-          aggregate_numTs = aggregate_numTs,
-          stringsAsFactors = FALSE
-        )
-      )
+      i <- i + 1L
+      
+      result_df$Sample_ID[i] <- sam
+      result_df$Condition[i] <- condition
+      result_df$aggregate_numCs[i] <-
+        sum(region_data$numCs, na.rm = TRUE)
+      result_df$aggregate_numTs[i] <-
+        sum(region_data$numTs, na.rm = TRUE)
     }
   }
-
-  # Return the dataframe
+  
   return(result_df)
 }
