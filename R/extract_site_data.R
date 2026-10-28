@@ -25,52 +25,107 @@
 extract_site_data <- function(
     region_res,
     samples,
-    region = "18S"
-) {
-  control_group <- names(samples[1])
-
-  # Extract numCs, numTs, and positions for all samples
-  numCs_reg <- lapply(region_res, function(x) x[[region]]$numCs)
-  numTs_reg <- lapply(region_res, function(x) x[[region]]$numTs)
-  position_reg <- lapply(region_res, function(x) x[[region]]$position)
-
-  all_data <- data.frame()
-
-  for (sam in names(numCs_reg)) {
-
-    numCs <- as.numeric(numCs_reg[[sam]])
-    numTs <- as.numeric(numTs_reg[[sam]])
-    position <- as.numeric(position_reg[[sam]])
-
-    # Assign T based on control_group
-    Group <- ifelse(sam %in% samples[[control_group]], 0, 1)
-
-    # Check if vectors have the same length
-    if (length(numCs) != length(numTs) || length(numCs) != length(position)) {
-      warning(
-        "numCs, numTs, and position have different lengths for sample ",
-        sam,
-        ". Skipping this sample.",
-        call. = FALSE
-      )
-      next
-    }
-
-    # Create data for this sample
-    df <- data.frame(
-      sample = sam,
+    region = "18S")
+{
+  # Check region data
+  if (!is.list(region_res) ||
+      is.data.frame(region_res) ||
+      length(region_res) == 0L ||
+      is.null(names(region_res)) ||
+      anyNA(names(region_res)) ||
+      any(!nzchar(names(region_res))) ||
+      anyDuplicated(names(region_res)) > 0L) {
+    stop("'region_res' must be a non-empty list with unique sample names.",
+         call. = FALSE)
+  }
+  
+  # Check conditions: downstream models use a binary Group variable
+  if (!is.list(samples) ||
+      is.data.frame(samples) ||
+      length(samples) != 2L ||
+      is.null(names(samples)) ||
+      anyNA(names(samples)) ||
+      any(!nzchar(names(samples))) ||
+      anyDuplicated(names(samples)) > 0L) {
+    stop("'samples' must be a named list of two uniquely named conditions.",
+         call. = FALSE)
+  }
+  
+  valid_samples <- vapply(samples, function(x) {
+    is.character(x) &&
+      is.null(dim(x)) &&
+      length(x) > 0L &&
+      !anyNA(x) &&
+      all(nzchar(x))
+  }, logical(1))
+  
+  if (!all(valid_samples)) {
+    stop("Each condition must contain a non-empty character vector 
+         of sample IDs.",
+         call. = FALSE)
+  }
+  
+  sample_ids <- unlist(samples, use.names = FALSE)
+  
+  if (anyDuplicated(sample_ids) > 0L) {
+    stop("Each sample ID must appear only once in 'samples'.",
+         call. = FALSE)
+  }
+  
+  if (!all(sample_ids %in% names(region_res))) {
+    stop("All sample IDs in 'samples' must exist in names(region_res).",
+         call. = FALSE)
+  }
+  
+  # Check region
+  if (!is.character(region) ||
+      length(region) != 1L ||
+      is.na(region) ||
+      !nzchar(region)) {
+    stop("'region' must be a single non-empty character string.",
+         call. = FALSE)
+  }
+  
+  control_samples <- samples[[1]]
+  
+  all_data <- S4Vectors::DataFrame(
+    sample = character(),
+    position = numeric(),
+    numCs = numeric(),
+    numTs = numeric(),
+    Group = numeric()
+  )
+  
+  # Preallocate storage for each sample
+  sample_results <- vector("list", length(sample_ids))
+  
+  for (i in seq_along(sample_ids)) {
+    sam <- sample_ids[i]
+    region_data <- region_res[[sam]][[region]]
+    
+    numCs <- region_data$numCs
+    numTs <- region_data$numTs
+    position <- region_data$position
+    
+    Group <- if (sam %in% control_samples) 0 else 1
+    
+    df <- S4Vectors::DataFrame(
+      sample = rep(sam, length(position)),
       position = position,
       numCs = numCs,
       numTs = numTs,
-      Group = Group
+      Group = rep(Group, length(position))
     )
-
-    # Remove zero-coverage sites
-    df <- df[(df$numCs + df$numTs) > 0, ]
-
-    # Add to combined data frame
-    all_data <- rbind(all_data, df)
+    
+    # Remove zero-coverage sites.
+    # Missing counts remain for validation by diff_meth_site().
+    coverage <- df$numCs + df$numTs
+    keep <- is.na(coverage) | coverage > 0
+    
+    sample_results[[i]] <- df[keep, , drop = FALSE]
   }
-
+  
+  all_data <- do.call(rbind, sample_results)
+  
   return(all_data)
 }

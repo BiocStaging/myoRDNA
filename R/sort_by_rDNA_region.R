@@ -79,126 +79,119 @@ sort_by_rDNA_region <- function(
     rDNA_meth_object,
     num_samples,
     species = "mm39",
-    min_cov = 10
-) {
-  if (species == "mm39") {
-    message("Species selected: mm39")
-    rdna_regions <- data.frame(
-    region = c("18S", "5.8S", "28S", 
-            "45S", "5_ETS", "ITS_1", 
-            "ITS_2","3_ETS","r"),
-    start = c(4008, 6878, 8123, 
-            1, 1, 5878, 
-            7035, 12852, 13404),
-    end = c(5877, 7034, 12852, 
-            13403, 4007, 6877, 
-            8122, 13403, 30000)
-    )
-  } else if (species == "rno7") {
-      message("Species selected: rno7")
-      rdna_regions <- data.frame(
-          region = c("18S", "5.8S", "28S"),
-          start = c(1, 1873, 2030),
-          end = c(1872, 2029, 6836)
-      )
-  } else if (species == "hg38") {
-      stop(
-        "Species selected: hg38. ",
-        "This species is not supported. Please select another species.",
-        call. = FALSE
-      )
-      rdna_regions <- data.frame(
-        region = c("18S", "5.8S", "28S", 
-              "45S", "5_ETS", "ITS_1", 
-              "ITS_2","3_ETS","r"),
-        start = c(4008, 6878, 8123, 
-              1, 1, 5878, 
-              7035, 12852, 13404),
-        end = c(5877, 7034, 12852, 
-              13403, 4007, 6877, 
-              8122, 13403, 30000)
-      )
+    min_cov = 10)
+{
+  # Basic input checks
+  if (!(is.list(rDNA_meth_object) ||
+        methods::is(rDNA_meth_object, "methylRawList")) ||
+      is.data.frame(rDNA_meth_object) ||
+      length(rDNA_meth_object) == 0L) {
+    stop("'rDNA_meth_object' must be a non-empty list or methylRawList.",
+         call. = FALSE)
   }
-  if (num_samples < 1 || num_samples > length(rDNA_meth_object)) {
-    
-    stop(
-      "num_samples must be between 1 and ",
-      length(rDNA_meth_object)
+  
+  if (!is.numeric(num_samples) ||
+      length(num_samples) != 1L ||
+      !is.finite(num_samples) ||
+      num_samples < 1 ||
+      num_samples != floor(num_samples) ||
+      num_samples > length(rDNA_meth_object)) {
+    stop("'num_samples' must be a positive whole number no greater", 
+         "than the number of samples.",
+         call. = FALSE)
+  }
+  
+  if (!is.character(species) ||
+      length(species) != 1L ||
+      is.na(species) ||
+      !species %in% c("mm39", "rno7", "hg38")) {
+    stop("'species' must be 'mm39', 'rno7', or 'hg38'.",
+         call. = FALSE)
+  }
+  
+  if (species == "hg38") {
+    stop("'hg38' is not currently supported.",
+         call. = FALSE)
+  }
+  
+  if (!is.numeric(min_cov) ||
+      length(min_cov) != 1L ||
+      !is.finite(min_cov) ||
+      min_cov < 0) {
+    stop("'min_cov' must be a single finite, non-negative number.",
+         call. = FALSE)
+  }
+  
+  # Define regions
+  message("Species selected: ", species)
+  
+  if (species == "mm39") {
+    rdna_regions <- data.frame(
+      region = c(
+        "18S", "5.8S", "28S", "45S", "5_ETS",
+        "ITS_1", "ITS_2", "3_ETS", "r"
+      ),
+      start = c(
+        4008, 6878, 8123, 1, 1,
+        5878, 7035, 12852, 13404
+      ),
+      end = c(
+        5877, 7034, 12852, 13403, 4007,
+        6877, 8122, 13403, 30000
+      )
     )
-    
+  } else {
+    rdna_regions <- data.frame(
+      region = c("18S", "5.8S", "28S"),
+      start = c(1, 1873, 2030),
+      end = c(1872, 2029, 6836)
+    )
   }
   
   region_results <- list()
+  
+  region_results <- vector("list", num_samples)
+  
   for (i in seq_len(num_samples)) {
-    
-    # Get methylation object for this sample
     sample <- rDNA_meth_object[[i]]
     
-    # Get sample ID
-    sample_id <- sample@sample.id
-    
-    #print(paste("Processing sample:", sample_id))
-    
     sample_data <- methylKit::getData(sample)
-    
-    required_columns <- c(
-      "start",
-      "numCs",
-      "numTs",
-      "coverage"
-    )
-    
-    missing_columns <- setdiff(
-      required_columns,
-      colnames(sample_data)
-    )
-    
-    if (length(missing_columns) > 0) {
-      
-      stop(
-        "Sample ", sample_id,
-        " is missing the following columns: ",
-        paste(missing_columns, collapse = ", ")
-      )
-      
-    }
-    
+    sample_id <- methylKit::getSampleID(sample)
+  
+    # Filter coverage and exclude missing positions
     sample_data <- sample_data[
-      sample_data$coverage >= min_cov,
+      !is.na(sample_data$coverage) &
+        sample_data$coverage >= min_cov &
+        !is.na(sample_data$start),
+      ,
+      drop = FALSE
     ]
     
-    region_results[[sample_id]] <- stats::setNames(
+    region_results[[i]] <- stats::setNames(
       vector("list", nrow(rdna_regions)),
       rdna_regions$region
     )
     
+    names(region_results)[i] <- sample_id
+    
     for (r in seq_len(nrow(rdna_regions))) {
-      
       region_name <- rdna_regions$region[r]
       
-      region_start <- rdna_regions$start[r]
-      
-      region_end <- rdna_regions$end[r]
-      
       region_data <- sample_data[
-        sample_data$start >= region_start &
-          sample_data$start <= region_end,
+        sample_data$start >= rdna_regions$start[r] &
+          sample_data$start <= rdna_regions$end[r],
+        ,
+        drop = FALSE
       ]
       
-      region_results[[sample_id]][[region_name]] <- list(
-        
+      region_results[[i]][[region_name]] <- list(
         numCs = region_data$numCs,
-        
         numTs = region_data$numTs,
-        
         coverage = region_data$coverage,
-        
         position = region_data$start
-        
       )
-      
     }
-    
   }
+  
   return(region_results)
 }

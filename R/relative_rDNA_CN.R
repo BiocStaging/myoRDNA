@@ -21,21 +21,9 @@
 #' **diploid** (2 copies of each chromosome). If `TRUE`, the relative rDNA 
 #' copy number is multiplied by 2. Default: `TRUE`.
 #'
-#' @return
-#' This function **prints** a tab-separated table to the console with the 
-#' following columns:
-#' \describe{
-#'   \item{Sample ID:}{ The sample identifier (extracted from 
-#'   `Meth_object[[i]]@sample.id`).}
-#'   \item{Total Number of reads:}{ The total coverage (sum of `coverage` 
-#'   column) for the reference region (autosomes or entire genome).}
-#'   \item{Number of reads rDNA:}{ The total coverage (sum of `coverage` 
-#'   column) for the rDNA region.}
-#'   \item{relative rDNA CN:}{ The relative rDNA copy number, calculated as 
-#'   `(sum_cov_rDNA / sum_cov_wgenome) * 2` (if diploid) or 
-#'   `(sum_cov_rDNA / sum_cov_wgenome)` (if haploid).}
-#' }
-#' The function does **not** return a value but prints results directly.
+#' @return An S4Vectors::DataFrame containing Sample_ID,
+#'   Total_Number_of_Reads, Number_of_Reads_rDNA, and Relative_rDNA_CN.
+#'   The read-count columns contain summed coverage across recorded sites.
 #'
 #'
 #' @examples
@@ -97,78 +85,91 @@ relative_rDNA_CN <- function(
     rDNA_chr,
     diploid = TRUE)
 {
-  # Initialize a dataframe to store results
-  results_df <- data.frame(
-    Sample_ID = character(),
-    Total_Number_of_Reads = numeric(),
-    Number_of_Reads_rDNA = numeric(),
-    Relative_rDNA_CN = numeric(),
-    stringsAsFactors = FALSE
-  )
-
-  if (autosomes == TRUE)
-  {
-    for (i in seq_len(num_samples))
-    {
-      chr_data <- Meth_object[[i]][
-        sub("^chr", "", Meth_object[[i]]$chr) %in%
-          as.character(seq_len(19)),
-      ]
-      rDNA_data <- Meth_object[[i]][Meth_object[[i]]$chr == rDNA_chr, ]
-      sum_cov_wgenome <- sum(chr_data$coverage, na.rm = TRUE)
-      sum_cov_rDNA <- sum(rDNA_data$coverage, na.rm = TRUE)
-
-      if (diploid == TRUE)
-      {
-        rel_rDNA_CN <- (sum_cov_rDNA / sum_cov_wgenome)
-      } else
-      {
-        rel_rDNA_CN <- (sum_cov_rDNA / sum_cov_wgenome)
-      }
-
-      # Append results to the dataframe
-      results_df <- rbind(
-        results_df,
-        data.frame(
-          Sample_ID = Meth_object[[i]]@sample.id,
-          Total_Number_of_Reads = sum_cov_wgenome,
-          Number_of_Reads_rDNA = sum_cov_rDNA,
-          Relative_rDNA_CN = rel_rDNA_CN,
-          stringsAsFactors = FALSE
-        )
-      )
-    }
-  } else
-  {
-    for (i in seq_len(num_samples))
-    {
-      chr_data <- Meth_object[[i]]
-      rDNA_data <- Meth_object[[i]][Meth_object[[i]]$chr == rDNA_chr, ]
-      sum_cov_wgenome <- sum(chr_data$coverage, na.rm = TRUE)
-      sum_cov_rDNA <- sum(rDNA_data$coverage, na.rm = TRUE)
-
-      if (diploid == TRUE)
-      {
-        rel_rDNA_CN <- (sum_cov_rDNA / sum_cov_wgenome)
-      } else
-      {
-        rel_rDNA_CN <- (sum_cov_rDNA / sum_cov_wgenome)
-      }
-
-      # Append results to the dataframe
-      results_df <- rbind(
-        results_df,
-        data.frame(
-          Sample_ID = Meth_object[[i]]@sample.id,
-          Total_Number_of_Reads = sum_cov_wgenome,
-          Number_of_Reads_rDNA = sum_cov_rDNA,
-          Relative_rDNA_CN = rel_rDNA_CN,
-          stringsAsFactors = FALSE
-        )
-      )
-    }
+  # Check sample container
+  if (!(is.list(Meth_object) ||
+        methods::is(Meth_object, "methylRawList")) ||
+      is.data.frame(Meth_object) ||
+      length(Meth_object) == 0L) {
+    stop("'Meth_object' must be a non-empty list or methylRawList.",
+         call. = FALSE)
   }
-
-  # Return the dataframe
+  
+  # Check number of samples
+  if (!is.numeric(num_samples) ||
+      length(num_samples) != 1L ||
+      !is.finite(num_samples) ||
+      num_samples < 1 ||
+      num_samples != floor(num_samples) ||
+      num_samples > length(Meth_object)) {
+    stop("'num_samples' must be a positive whole number no greater than",
+         "the number of samples in 'Meth_object'.",
+         call. = FALSE)
+  }
+  
+  # Check logical arguments
+  if (!is.logical(autosomes) ||
+      length(autosomes) != 1L ||
+      is.na(autosomes)) {
+    stop("'autosomes' must be a single TRUE or FALSE.",
+         call. = FALSE)
+  }
+  
+  if (!is.logical(diploid) ||
+      length(diploid) != 1L ||
+      is.na(diploid)) {
+    stop("'diploid' must be a single TRUE or FALSE.",
+         call. = FALSE)
+  }
+  
+  # Check chromosome name
+  if (!is.character(rDNA_chr) ||
+      length(rDNA_chr) != 1L ||
+      is.na(rDNA_chr) ||
+      !nzchar(rDNA_chr)) {
+    stop("'rDNA_chr' must be a single non-empty character string.",
+         call. = FALSE)
+  }
+  
+  results_df <- S4Vectors::DataFrame(
+    Sample_ID = character(num_samples),
+    Total_Number_of_Reads = numeric(num_samples),
+    Number_of_Reads_rDNA = numeric(num_samples),
+    Relative_rDNA_CN = numeric(num_samples)
+  )
+  
+  for (i in seq_len(num_samples)) {
+    sample_object <- Meth_object[[i]]
+    
+    sample_data <- methylKit::getData(sample_object)
+    sample_id <- methylKit::getSampleID(sample_object)
+    
+    chromosomes <- as.character(sample_data$chr)
+    
+    if (autosomes) {
+      reference_rows <- sub("^chr", "", chromosomes) %in%
+        as.character(seq_len(19))
+    } else {
+      reference_rows <- rep(TRUE, nrow(sample_data))
+    }
+    
+    rdna_rows <- chromosomes %in% rDNA_chr
+    
+    sum_cov_wgenome <- sum(
+      sample_data$coverage[reference_rows],
+      na.rm = TRUE
+    )
+    
+    sum_cov_rDNA <- sum(
+      sample_data$coverage[rdna_rows],
+      na.rm = TRUE
+    )
+    
+    results_df$Sample_ID[i] <- sample_id
+    results_df$Total_Number_of_Reads[i] <- sum_cov_wgenome
+    results_df$Number_of_Reads_rDNA[i] <- sum_cov_rDNA
+    results_df$Relative_rDNA_CN[i] <-
+      sum_cov_rDNA / sum_cov_wgenome
+  }
+  
   return(results_df)
 }
