@@ -2,7 +2,7 @@
 title: "Introduction to myoRDNA"
 author: "MuscleOmicsLab"
 output:
-  rmarkdown::html_vignette:
+  BiocStyle::html_document:
     toc: true
     toc_depth: 3
     number_sections: true
@@ -77,12 +77,11 @@ The development version of `myoRDNA` is available from GitHub
 and can be installed using the `remotes` package.
 
 ```{r installation, eval=FALSE}
-install.packages("remotes")
+if (!requireNamespace("BiocManager", quietly = TRUE)) {
+    install.packages("BiocManager")
+}
 
-remotes::install_github(
-  "MuscleOmicsLab/myoRDNA",
-  dependencies = TRUE
-)
+BiocManager::install("myoRDNA")
 ```
 
 Load the package using:
@@ -159,8 +158,8 @@ The dataset contains six OLD samples and four YOUNG samples.
 We define a binary treatment vector to distinguish these
 experimental groups:
 
-- `0`: OLD
-- `1`: YOUNG
+- `0`: Control
+- `1`: Condition
 
 The order of the treatment assignments must correspond
 exactly to the order of the samples in `loaded_data`.
@@ -206,8 +205,7 @@ individual sample objects with their treatment assignments.
 ```{r create-methylrawlist}
 stopifnot(length(loaded_data) == length(treatment))
 
-loaded_data <- methods::new(
-  "methylRawList",
+loaded_data <- methylKit::methylRawList(
   loaded_data,
   treatment = treatment
 )
@@ -254,6 +252,28 @@ unique_names <- get_unique_chr_names(
 This returns an array with the unique chromosome names that are included, 
 additionally it performs a check to verify that all samples have consistent 
 chromosome names. 
+
+
+### Difference between autosomes and rDNA
+Figure \@ref(fig:aged-coverage) shows the coverage distributions for
+chromosome 1 and rDNA in aged samples. Within the displayed range,
+chromosome 1 coverage is concentrated near the lower end, whereas
+rDNA coverage is more broadly distributed.
+
+```{r aged-coverage}
+#| echo: false
+#| out.width: "100%"
+#| fig.show: "hold"
+#| fig.align: "center"
+#| fig.cap: >
+#|   Coverage distributions in aged samples for chromosome 1 (top)
+#|   and rDNA (bottom). Bars show frequencies within coverage bins.
+
+knitr::include_graphics(c(
+  "plots/hist_coverage_chr_1.png",
+  "plots/hist_coverage_chr_rDNA.png"
+))
+```
 
 ## Step 5: Adjust rDNA genomic coordinates
 
@@ -307,8 +327,8 @@ about rDNA contig in the rat for this shifting.
 The need for shifting is obvious when plotting the `numCs` against genomic 
 position. The activity will start just after genomic position at the point $s$. 
 The shifting is vital for regional analysis of the 18S for differential 
-methylation. However, functions surrounding the rDNA copy number will produce an
-interpretative result without shifting.
+methylation. However, functions surrounding the rDNA copy number will produce 
+an interpretative result without shifting.
 
 # rDNA copy-number analysis
 
@@ -508,6 +528,20 @@ extraction. For reproducible analyses, users should document the reference
 genome, coverage-filtering thresholds, sequencing methodology and genomic 
 regions used for normalisation.
 
+Figure \@ref(fig:absolute-v-relative) shows the relationship between
+absolute and relative estimates of rDNA copy number. Highlighting the 
+lack of correlation between absolute and relative rDNA copy number from 
+WGBS.
+
+```{r absolute-v-relative}
+#| echo: false
+#| out.width: "100%"
+#| fig.align: "center"
+#| fig.cap: "Absolute against relative rDNA copy number."
+
+knitr::include_graphics("plots/relative_vs_absolute_rDNA_copy_number.svg")
+```
+
 # Regional rDNA methylation analysis
 
 The ribosomal DNA (rDNA) repeat contains several distinct functional regions, 
@@ -664,6 +698,26 @@ Regional methylation measurements can subsequently be compared between
 experimental conditions to investigate differences in the epigenetic regulation 
 of rDNA.
 
+Figure \@ref(fig:copy-number-methylation) shows the relationship between
+absolute rDNA copy number and aggregate methylation in young and old
+samples. Both average- and median-based estimates show a positive
+association with copy number. Young samples generally have higher
+copy numbers and methylation values, although the groups overlap.
+
+```{r copy-number-methylation}
+#| echo: false
+#| out.width: "100%"
+#| fig.align: "center"
+#| fig.cap: >
+#|   Absolute rDNA copy number and aggregate methylation in old (blue)
+#|   and young (red) samples, with shaded bands
+#|   indicating uncertainty around the fits.
+
+knitr::include_graphics(
+  "plots/absolute_vs_aggregate_rDNA_methylation.svg"
+)
+```
+
 # Differential rDNA methylation analysis
 
 The repetitive organisation of ribosomal DNA (rDNA) presents several challenges 
@@ -736,6 +790,25 @@ $$
 =
 n_i p_i(1-p_i).
 $$
+Figure \@ref(fig:volcano-methylation) summarises the differential
+methylation results. Most points lie close to zero on the horizontal
+axis, indicating relatively small methylation differences. Several
+points exceed the horizontal significance threshold, but few exceed
+the vertical effect-size thresholds.
+
+```{r volcano-methylation}
+#| echo: false
+#| out.width: "100%"
+#| fig.align: "center"
+#| fig.cap: >
+#|   Volcano plot of differential methylation results. Each point
+#|   represents a tested site. Blue dashed lines mark the significance
+#|   threshold and the methylation-difference thresholds at -25 and +25.
+
+knitr::include_graphics(
+  "plots/volcano_plot_exercised_bin_regress.svg"
+)
+```
 
 ### Quasi-binomial logistic regression
 
