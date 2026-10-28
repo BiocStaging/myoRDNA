@@ -1,7 +1,6 @@
-file_path <- system.file(
-  "extdata",
-  "filtered_meth_raw_chr1_chrRDNAm_small.rds",
-  package = "myoRDNA"
+file_path <- testthat::test_path(
+  "fixtures",
+  "filtered_meth_raw_chr1_chrRDNAm_small.rds"
 )
 
 loaded_data <- readRDS(file_path)
@@ -43,17 +42,12 @@ meth_rDNA_shifted <- shifting(
 # Test
 test_that("test site by site differential methylation", {
 
-  file_path <- system.file(
-    "extdata",
-    "differential_meth_site.rds",
-    package = "myoRDNA"
-  )
+  file_path <- testthat::test_path("fixtures", "differential_meth_site.rds")
 
   expect_true(nzchar(file_path))
   expect_true(file.exists(file_path))
 
-  # Load expected test data
-  expected_output <- readRDS(file_path)
+  expected_output <- S4Vectors::DataFrame(readRDS(file_path))
   
   # Run the function
   actual_output <- diff_meth(
@@ -67,28 +61,22 @@ test_that("test site by site differential methylation", {
     p_adjust_method="BH",
     site = TRUE)
   
-  #print(actual_output)
+  rownames(actual_output) <- NULL
+  rownames(expected_output) <- NULL
   
-  #saveRDS(actual_output, "inst/extdata/differential_meth_site.rds")
-  
-  # Compare results
+  expect_s4_class(actual_output, "DataFrame")
   expect_equal(actual_output, expected_output)
 })
 
 # Test
 test_that("test region by region differential methylation", {
 
-  file_path <- system.file(
-    "extdata",
-    "differential_meth_region.rds",
-    package = "myoRDNA"
-  )
+  file_path <- testthat::test_path("fixtures", "differential_meth_region.rds")
 
   expect_true(nzchar(file_path))
   expect_true(file.exists(file_path))
 
-  # Load expected test data
-  expected_output <- readRDS(file_path)
+  expected_output <- S4Vectors::DataFrame(readRDS(file_path))
   
   # Run the function
   actual_output <- diff_meth(
@@ -102,10 +90,21 @@ test_that("test region by region differential methylation", {
     p_adjust_method="BH",
     site = FALSE)
   
-  #print(actual_output)
+  expect_s4_class(actual_output, "DataFrame")
   
-  #saveRDS(actual_output, "inst/extdata/differential_meth_region.rds")
+  # Check that both outputs contain the same columns
+  expect_setequal(names(actual_output), names(expected_output))
   
-  # Compare results
+  # Align columns by name
+  expected_output <- expected_output[
+    ,
+    names(actual_output),
+    drop = FALSE
+  ]
+  
+  rownames(actual_output) <- NULL
+  rownames(expected_output) <- NULL
+  
+  expect_s4_class(actual_output, "DataFrame")
   expect_equal(actual_output, expected_output)
 })

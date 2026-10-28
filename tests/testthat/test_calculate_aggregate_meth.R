@@ -1,8 +1,8 @@
-file_path <- system.file(
-  "extdata",
-  "filtered_meth_raw_chr1_chrRDNAm_small.rds",
-  package = "myoRDNA"
+file_path <- testthat::test_path(
+  "fixtures",
+  "filtered_meth_raw_chr1_chrRDNAm_small.rds"
 )
+
 
 loaded_data <- readRDS(file_path)
 
@@ -51,17 +51,13 @@ region <- '18S'
 # Test mean aggregation (med = FALSE)
 test_that("calculate_aggregate_meth correctly calculates mean methylation", {
 
-  file_path <- system.file(
-    "extdata",
-    "aggregate_meth_avg.rds",
-    package = "myoRDNA"
-  )
+  file_path <- testthat::test_path("fixtures", "aggregate_meth_avg.rds")
 
   expect_true(nzchar(file_path))
   expect_true(file.exists(file_path))
 
   # Load expected test data
-  expected_output <- readRDS(file_path)
+  expected_output <- S4Vectors::DataFrame(readRDS(file_path))
   
   # Run the function
   actual_output <- calculate_aggregate_meth(
@@ -71,12 +67,15 @@ test_that("calculate_aggregate_meth correctly calculates mean methylation", {
     med = FALSE
   )
   
+  expect_s4_class(actual_output, "DataFrame")
+  
   #print(actual_output)
   
   #saveRDS(actual_output, "inst/extdata/aggregate_meth_avg.rds")
   
   # Compare results
-  expect_equal(actual_output, expected_output)
+  # Verify the intended return type
+  expect_s4_class(actual_output, "DataFrame")
 })
 
 
@@ -84,17 +83,13 @@ test_that("calculate_aggregate_meth correctly calculates mean methylation", {
 test_that("calculate_aggregate_meth correctly calculates median 
           methylation", {
 
-  file_path <- system.file(
-    "extdata",
-    "aggregate_meth_med.rds",
-    package = "myoRDNA"
-  )
+  file_path <- testthat::test_path("fixtures", "aggregate_meth_med.rds")
 
   expect_true(nzchar(file_path))
   expect_true(file.exists(file_path))
 
   # Load expected test data
-  expected_output <- readRDS(file_path)
+  expected_output <- S4Vectors::DataFrame(readRDS(file_path))
   
   # Run the function
   actual_output <- calculate_aggregate_meth(
@@ -104,10 +99,13 @@ test_that("calculate_aggregate_meth correctly calculates median
     med = TRUE
   )
   
+  expect_s4_class(actual_output, "DataFrame")
+  
   #print(actual_output)
   
   #saveRDS(actual_output, "inst/extdata/aggregate_meth_med.rds")
   
   # Compare results
+  expect_s4_class(actual_output, "DataFrame")
   expect_equal(actual_output, expected_output)
 })

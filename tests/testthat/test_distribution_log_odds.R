@@ -1,7 +1,6 @@
-file_path <- system.file(
-  "extdata",
-  "filtered_meth_raw_chr1_chrRDNAm_small.rds",
-  package = "myoRDNA"
+file_path <- testthat::test_path(
+  "fixtures",
+  "filtered_meth_raw_chr1_chrRDNAm_small.rds"
 )
 
 loaded_data <- readRDS(file_path)
@@ -20,31 +19,18 @@ samples <- list(
 treatment = c(0,0,0,0,0,0,
               1,1,1,1)
 
-# Test
 test_that("test log odds for numCs and numTs", {
 
-  file_path <- system.file(
-    "extdata",
-    "log_odds.rds",
-    package = "myoRDNA"
-  )
-
-  expect_true(nzchar(file_path))
-  expect_true(file.exists(file_path))
-
-  # Load expected test data
-  expected_output <- readRDS(file_path)
+  file_path <- testthat::test_path("fixtures", "log_odds.rds")
   
-  # Run the function
+  expected_output <- S4Vectors::DataFrame(readRDS(file_path))
+  
   actual_output <- distribution_log_odd(
-    loaded_data, 
-    treatment, 
-    chromo="chrRDNAm")
+    loaded_data,
+    treatment,
+    chromo = "chrRDNAm"
+  )
   
-  #print(actual_output)
-  
-  #saveRDS(actual_output, "inst/extdata/log_odds.rds")
-  
-  # Compare results
+  expect_s4_class(actual_output, "DataFrame")
   expect_equal(actual_output, expected_output)
 })

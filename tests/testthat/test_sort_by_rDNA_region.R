@@ -1,7 +1,6 @@
-file_path <- system.file(
-  "extdata",
-  "filtered_meth_raw_chr1_chrRDNAm_small.rds",
-  package = "myoRDNA"
+file_path <- testthat::test_path(
+  "fixtures",
+  "filtered_meth_raw_chr1_chrRDNAm_small.rds"
 )
 
 loaded_data <- readRDS(file_path)
@@ -37,11 +36,7 @@ meth_rDNA <- get_rDNA_data(
 # Test
 test_that("test calculate regions", {
 
-  file_path <- system.file(
-    "extdata",
-    "region_res.rds",
-    package = "myoRDNA"
-  )
+  file_path <- testthat::test_path("fixtures", "region_res.rds")
 
   expect_true(nzchar(file_path))
   expect_true(file.exists(file_path))
@@ -56,10 +51,6 @@ test_that("test calculate regions", {
     species = "mm39",
     min_cov = 10
   )
-  
-  #print(actual_output)
-  
-  #saveRDS(actual_output, "inst/extdata/region_res.rds")
   
   # Compare results
   expect_equal(actual_output, expected_output)

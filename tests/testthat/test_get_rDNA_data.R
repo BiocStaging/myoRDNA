@@ -1,13 +1,14 @@
-file_path <- system.file(
-  "extdata",
-  "filtered_meth_raw_chr1_chrRDNAm_small.rds",
-  package = "myoRDNA"
+file_path <- testthat::test_path(
+  "fixtures",
+  "filtered_meth_raw_chr1_chrRDNAm_small.rds"
 )
 
 loaded_data <- readRDS(file_path)
 
 treatment = c(0,0,0,0,0,0,
               1,1,1,1)
+
+num_samples <- length(treatment)
 
 loaded_data <- new(
   "methylRawList",
@@ -18,11 +19,7 @@ loaded_data <- new(
 # Test
 test_that("test get rDNA data", {
 
-  file_path <- system.file(
-    "extdata",
-    "meth_rDNA.rds",
-    package = "myoRDNA"
-  )
+  file_path <- testthat::test_path("fixtures", "meth_rDNA.rds")
 
   expect_true(nzchar(file_path))
   expect_true(file.exists(file_path))
@@ -35,10 +32,6 @@ test_that("test get rDNA data", {
     loaded_data,
     num_samples,
     rDNA_chr_name = "chrRDNAm")
-  
-  #print(actual_output)
-  
-  #saveRDS(actual_output, "inst/extdata/meth_rDNA.rds")
   
   # Compare results
   expect_equal(actual_output, expected_output)

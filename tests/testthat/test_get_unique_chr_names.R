@@ -1,7 +1,6 @@
-file_path <- system.file(
-  "extdata",
-  "filtered_meth_raw_chr1_chrRDNAm_small.rds",
-  package = "myoRDNA"
+file_path <- testthat::test_path(
+  "fixtures",
+  "filtered_meth_raw_chr1_chrRDNAm_small.rds"
 )
 
 loaded_data <- readRDS(file_path)
@@ -14,11 +13,7 @@ num_samples <- length(treatment)
 # Test
 test_that("test get unique chromosome names", {
 
-  file_path <- system.file(
-    "extdata",
-    "unique_names.rds",
-    package = "myoRDNA"
-  )
+  file_path <- testthat::test_path("fixtures", "unique_names.rds")
 
   expect_true(nzchar(file_path))
   expect_true(file.exists(file_path))
@@ -30,10 +25,6 @@ test_that("test get unique chromosome names", {
   actual_output <- get_unique_chr_names(
     loaded_data,
     num_samples)
-  
-  #print(actual_output)
-  
-  #saveRDS(actual_output, "inst/extdata/unique_names.rds")
   
   # Compare results
   expect_equal(actual_output, expected_output)

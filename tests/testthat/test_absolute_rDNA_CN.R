@@ -1,8 +1,9 @@
-file_path <- system.file(
-  "extdata",
-  "filtered_meth_raw_chr1_chrRDNAm_small.rds",
-  package = "myoRDNA"
+file_path <- testthat::test_path(
+  "fixtures",
+  "filtered_meth_raw_chr1_chrRDNAm_small.rds"
 )
+
+loaded_data <- readRDS(file_path)
 
 loaded_data <- readRDS(file_path)
 
@@ -14,17 +15,13 @@ num_samples <- length(treatment)
 # Test
 test_that("test absolute rDNA copy number", {
   
-  file_path <- system.file(
-    "extdata",
-    "abs_out.rds",
-    package = "myoRDNA"
-  )
+  file_path <- testthat::test_path("fixtures", "abs_out.rds")
 
   expect_true(nzchar(file_path))
   expect_true(file.exists(file_path))
 
   # Load expected test data
-  expected_output <- readRDS(file_path)
+  expected_output <- S4Vectors::DataFrame(readRDS(file_path))
   
   # Run the function
   actual_output <- absolute_rDNA_CN(
