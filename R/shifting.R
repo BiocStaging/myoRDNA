@@ -76,43 +76,68 @@
 shifting <- function(
     meth_rdna_raw,
     cutoff,
-    treatment
-) {
-  # 1. Extract all positions from meth_raw
-  all_positions <- unlist(lapply(meth_rdna_raw, 
-                                 function(x) methylKit::getData(x)$start))
-  all_positions
-
-  # 2. Calculate the maximum position
+    treatment)
+{
+  # Check methylation objects
+  if (!(is.list(meth_rdna_raw) ||
+        methods::is(meth_rdna_raw, "methylRawList")) ||
+      length(meth_rdna_raw) == 0L) {
+    stop("'meth_rdna_raw' must be a non-empty list or methylRawList.",
+         call. = FALSE)
+  }
+  
+  if (!all(vapply(meth_rdna_raw, function(x) {
+    methods::is(x, "methylRaw")
+  }, logical(1)))) {
+    stop("Each sample must be a methylRaw object.", call. = FALSE)
+  }
+  
+  # Check cutoff
+  if (!is.numeric(cutoff) ||
+      length(cutoff) != 1L ||
+      !is.finite(cutoff) ||
+      cutoff < 1 ||
+      cutoff != floor(cutoff)) {
+    stop("'cutoff' must be a positive whole number.", call. = FALSE)
+  }
+  
+  # Check treatment codes
+  if (!is.numeric(treatment) ||
+      !is.null(dim(treatment)) ||
+      length(treatment) != length(meth_rdna_raw) ||
+      any(!is.finite(treatment)) ||
+      any(treatment < 0) ||
+      any(treatment != floor(treatment))) {
+    stop("'treatment' must contain one non-negative whole-number 
+         code per sample.",
+         call. = FALSE)
+  }
+  
+  # Extract positions
+  all_positions <- unlist(lapply(
+    meth_rdna_raw,
+    function(x) methylKit::getData(x)$start
+  ))
+  
+  if (length(all_positions) == 0L ||
+      any(!is.finite(all_positions))) {
+    stop("Start positions must be present and finite.", call. = FALSE)
+  }
+  
+  # Calculate and apply the shift
   max_position <- max(all_positions)
-  max_position
-
-  # 3. Compute the shift
   shift <- max_position - cutoff
-  shift
-
-  meth_rdna_shifted <- lapply(meth_rdna_raw, function(x) {
-    df <- methylKit::getData(x)
-
-    df$start <- df$start - shift
-    df$end   <- df$end - shift
-
-    # Filter invalid coordinates
-    df <- df[df$start >= 0 & df$end >= 0, ]
-
-    # Rebuild methylRaw object
-    new_x <- methods::new("methylRaw",
-                 df,
-                 sample.id = x@sample.id,
-                 assembly  = x@assembly,
-                 context   = x@context,
-                 resolution = x@resolution)
-
-    return(new_x)
-  })
+  
+  meth_rdna_shifted <- lapply(
+    meth_rdna_raw,
+    .shift_methylRaw,
+    shift = shift
+  )
+  
   meth_rdna_shifted <- methylKit::methylRawList(
     meth_rdna_shifted,
     treatment = treatment
   )
+  
   return(meth_rdna_shifted)
 }
