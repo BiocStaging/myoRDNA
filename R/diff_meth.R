@@ -179,29 +179,135 @@ diff_meth <- function(
     region,
     model_type,
     p_adjust_method,
-    site = TRUE) 
+    site = TRUE)
 {
+  # Check methylation input
+  if (!(is.list(meth_data) ||
+        methods::is(meth_data, "methylRawList")) ||
+      is.data.frame(meth_data) ||
+      length(meth_data) == 0L) {
+    stop("'meth_data' must be a non-empty list of methylKit", 
+    "objects or a methylRawList.",
+         call. = FALSE)
+  }
+  
+  # Check number of samples
+  if (!is.numeric(num_samples) ||
+      length(num_samples) != 1L ||
+      !is.finite(num_samples) ||
+      num_samples < 1 ||
+      num_samples != floor(num_samples) ||
+      num_samples > length(meth_data)) {
+    stop("'num_samples' must be a positive whole number no greater",
+    "than the number of samples in 'meth_data'.",
+         call. = FALSE)
+  }
+  
+  # Check experimental conditions
+  if (!is.list(samples) ||
+      is.data.frame(samples) ||
+      length(samples) != 2L ||
+      is.null(names(samples)) ||
+      anyNA(names(samples)) ||
+      any(!nzchar(names(samples))) ||
+      anyDuplicated(names(samples)) > 0L) {
+    stop("'samples' must be a named list of two uniquely named conditions.",
+         call. = FALSE)
+  }
+  
+  # Check reference genome
+  if (!is.character(species) ||
+      length(species) != 1L ||
+      is.na(species) ||
+      !nzchar(species)) {
+    stop("'species' must be a single non-empty character string.",
+         call. = FALSE)
+  }
+  
+  # Check minimum coverage
+  if (!is.numeric(min_cov) ||
+      length(min_cov) != 1L ||
+      !is.finite(min_cov) ||
+      min_cov < 1 ||
+      min_cov != floor(min_cov)) {
+    stop("'min_cov' must be a positive whole number.",
+         call. = FALSE)
+  }
+  
+  # Check analysis level
+  if (!is.logical(site) ||
+      length(site) != 1L ||
+      is.na(site)) {
+    stop("'site' must be a single TRUE or FALSE.",
+         call. = FALSE)
+  }
+  
+  # Region is required only for site-level analysis
+  if (site) {
+    if (missing(region) ||
+        !is.character(region) ||
+        length(region) != 1L ||
+        is.na(region) ||
+        !nzchar(region)) {
+      stop("'region' must be a single non-empty character string",
+      "when 'site = TRUE'.",
+           call. = FALSE)
+    }
+  }
+  
+  # Check regression model
+  valid_models <- c(
+    "binomial",
+    "quasi-binomial",
+    "beta-binomial"
+  )
+  
+  if (!is.character(model_type) ||
+      length(model_type) != 1L ||
+      is.na(model_type) ||
+      !model_type %in% valid_models) {
+    stop("'model_type' must be 'binomial', 'quasi-binomial'", 
+    "or 'beta-binomial'.",
+         call. = FALSE)
+  }
+  
+  # Check multiple-testing correction
+  if (!is.character(p_adjust_method) ||
+      length(p_adjust_method) != 1L ||
+      is.na(p_adjust_method) ||
+      !p_adjust_method %in% stats::p.adjust.methods) {
+    stop("'p_adjust_method' must be a valid p-value adjustment method.",
+         call. = FALSE)
+  }
+  
+  # Partition methylation data into rDNA regions
   region_res <- sort_by_rDNA_region(
-    rDNA_meth_object=meth_data,
-    num_samples=num_samples,
-    species=species,
-    min_cov=min_cov)
-  if (site == TRUE)
-  {
+    rDNA_meth_object = meth_data,
+    num_samples = num_samples,
+    species = species,
+    min_cov = min_cov
+  )
+  
+  if (site) {
     all_data <- extract_site_data(
-      region_res, 
-      samples, 
-      region)
+      region_res,
+      samples,
+      region
+    )
+    
     results <- diff_meth_site(
-      all_data = all_data, 
-      model_type = model_type, 
-      p_adjust_method = p_adjust_method)
+      all_data = all_data,
+      model_type = model_type,
+      p_adjust_method = p_adjust_method
+    )
   } else {
     results <- analyze_methylation_regions(
       region_res = region_res,
       samples = samples,
-      model_type = model_type,  
-      p_adjust_method = p_adjust_method)
+      model_type = model_type,
+      p_adjust_method = p_adjust_method
+    )
   }
+  
   return(results)
 }
