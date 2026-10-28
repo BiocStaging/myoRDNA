@@ -33,7 +33,7 @@ use. Options: `"binomial"`, `"quasi-binomial"`, or `"beta-binomial"`
 \item{p_adjust_method}{A character string specifying the method for p-value 
 adjustment.
   Default is `"BH"` (Benjamini-Hochberg). Note: Adjustment is applied in 
-  thewrapper function.}
+  the wrapper function.}
 }
 \value{
 A data frame with columns:

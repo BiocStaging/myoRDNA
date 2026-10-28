@@ -5,7 +5,7 @@
 \title{Computes the aggregate methylation for a specified genomic region across 
 samples, grouped by their respective conditions.}
 \usage{
-aggregate_numCs_numTs_region(region_res, region, conditions, med = FALSE)
+aggregate_numCs_numTs_region(region_res, region, conditions)
 }
 \arguments{
 \item{region_res}{A nested list where each top-level element is a sample 

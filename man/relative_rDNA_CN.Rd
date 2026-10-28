@@ -32,20 +32,9 @@ chromosome (e.g., `"chrRDNAm"`).}
 copy number is multiplied by 2. Default: `TRUE`.}
 }
 \value{
-This function **prints** a tab-separated table to the console with the 
-following columns:
-\describe{
-  \item{Sample ID:}{ The sample identifier (extracted from 
-  `Meth_object[[i]]@sample.id`).}
-  \item{Total Number of reads:}{ The total coverage (sum of `coverage` 
-  column) for the reference region (autosomes or entire genome).}
-  \item{Number of reads rDNA:}{ The total coverage (sum of `coverage` 
-  column) for the rDNA region.}
-  \item{relative rDNA CN:}{ The relative rDNA copy number, calculated as 
-  `(sum_cov_rDNA / sum_cov_wgenome) * 2` (if diploid) or 
-  `(sum_cov_rDNA / sum_cov_wgenome)` (if haploid).}
-}
-The function does **not** return a value but prints results directly.
+An S4Vectors::DataFrame containing Sample_ID,
+  Total_Number_of_Reads, Number_of_Reads_rDNA, and Relative_rDNA_CN.
+  The read-count columns contain summed coverage across recorded sites.
 }
 \description{
 This function calculates the **relative rDNA copy number** for each sample 
