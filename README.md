@@ -12,7 +12,7 @@ between experimental conditions.
 
 Install **myoRDNA** from Bioconductor using **BiocManager**:
 
-```{r installation, eval=FALSE}
+```
 if (!requireNamespace("BiocManager", quietly = TRUE)) {
     install.packages("BiocManager")
 }
