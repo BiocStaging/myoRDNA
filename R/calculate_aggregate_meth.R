@@ -99,43 +99,72 @@
 #' print(median_meth)
 #'
 #' @export
-calculate_aggregate_meth <- function(region_res, region, conditions,
-                                     med = FALSE) {
-  # Initialize an empty dataframe to store results
-  result_df <- data.frame(
-    Sample_ID = character(),
-    Condition = character(),
-    aggregate_meth = numeric(),
-    stringsAsFactors = FALSE
+calculate_aggregate_meth <- function(
+    region_res,
+    region,
+    conditions,
+    med = FALSE)
+{
+  # Basic input checks
+  if (!is.list(region_res) ||
+      is.data.frame(region_res) ||
+      length(region_res) == 0L) {
+    stop("'region_res' must be a non-empty list.", call. = FALSE)
+  }
+  
+  if (!is.character(region) ||
+      length(region) != 1L ||
+      is.na(region) ||
+      !nzchar(region)) {
+    stop("'region' must be a single non-empty character string.",
+         call. = FALSE)
+  }
+  
+  if (!is.list(conditions) ||
+      is.data.frame(conditions) ||
+      length(conditions) == 0L ||
+      is.null(names(conditions)) ||
+      anyNA(names(conditions)) ||
+      any(!nzchar(names(conditions)))) {
+    stop("'conditions' must be a non-empty named list.",
+         call. = FALSE)
+  }
+  
+  if (!is.logical(med) ||
+      length(med) != 1L ||
+      is.na(med)) {
+    stop("'med' must be a single TRUE or FALSE.", call. = FALSE)
+  }
+  
+  # Preallocate the results
+  n_samples <- sum(lengths(conditions))
+  
+  result_df <- S4Vectors::DataFrame(
+    Sample_ID = character(n_samples),
+    Condition = character(n_samples),
+    aggregate_meth = numeric(n_samples)
   )
-
-  # Iterate over each condition and its samples
+  
+  i <- 0L
+  
   for (condition in names(conditions)) {
     for (sam in conditions[[condition]]) {
-      # Extract numCs and coverage for the specified region
-      numCs <- region_res[[sam]][[region]]$numCs
-      cov <- region_res[[sam]][[region]]$coverage
-
-      # Calculate aggregate_meth
-      if (med == TRUE){
-        aggregate_meth <- stats::median(numCs / cov, na.rm = TRUE)
+      i <- i + 1L
+      
+      region_data <- region_res[[sam]][[region]]
+      meth <- region_data$numCs / region_data$coverage
+      
+      if (med) {
+        aggregate_meth <- stats::median(meth, na.rm = TRUE)
       } else {
-        aggregate_meth <- mean(numCs / cov, na.rm = TRUE)
+        aggregate_meth <- mean(meth, na.rm = TRUE)
       }
       
-      # Append the results to the dataframe
-      result_df <- rbind(
-        result_df,
-        data.frame(
-          Sample_ID = sam,
-          Condition = condition,
-          aggregate_meth = aggregate_meth,
-          stringsAsFactors = FALSE
-        )
-      )
+      result_df$Sample_ID[i] <- sam
+      result_df$Condition[i] <- condition
+      result_df$aggregate_meth[i] <- aggregate_meth
     }
   }
-
-  # Return the dataframe
+  
   return(result_df)
 }
