@@ -18,8 +18,8 @@
 #'   Default: `TRUE`.
 #' @param rDNA_chr - A character string specifying the name of the rDNA 
 #' chromosome (e.g., `"chrRDNAm"`).
-#' @param diploid - A logical (`TRUE`/`FALSE`) indicating whether the genome is 
-#' **diploid** (2 copies of each chromosome).
+#' @param diploid - A logical (`TRUE`/`FALSE`) indicating whether the genome 
+#' is **diploid** (2 copies of each chromosome).
 #'   If `TRUE`, the absolute rDNA copy number is multiplied by 2. Default: 
 #'   `TRUE`.
 #'
@@ -96,50 +96,95 @@ absolute_rDNA_CN <- function(
     rDNA_chr,
     diploid = TRUE)
 {
-  # Initialise a Bioconductor DataFrame with one row per sample
+  # Check input container
+  if (!(is.list(Meth_object) ||
+        methods::is(Meth_object, "methylRawList")) ||
+      is.data.frame(Meth_object) ||
+      length(Meth_object) == 0L) {
+    stop("'Meth_object' must be a non-empty list or methylRawList.",
+         call. = FALSE)
+  }
+  
+  # Check number of samples
+  if (!is.numeric(num_samples) ||
+      length(num_samples) != 1L ||
+      !is.finite(num_samples) ||
+      num_samples < 1 ||
+      num_samples != floor(num_samples) ||
+      num_samples > length(Meth_object)) {
+    stop(
+      "'num_samples' must be a positive whole number ",
+      "no greater than the number of samples.",
+      call. = FALSE
+    )
+  }
+  
+  # Check logical arguments
+  if (!is.logical(autosomes) ||
+      length(autosomes) != 1L ||
+      is.na(autosomes)) {
+    stop("'autosomes' must be a single TRUE or FALSE.",
+         call. = FALSE)
+  }
+  
+  if (!is.logical(diploid) ||
+      length(diploid) != 1L ||
+      is.na(diploid)) {
+    stop("'diploid' must be a single TRUE or FALSE.",
+         call. = FALSE)
+  }
+  
+  # Check chromosome name
+  if (!is.character(rDNA_chr) ||
+      length(rDNA_chr) != 1L ||
+      is.na(rDNA_chr) ||
+      !nzchar(rDNA_chr)) {
+    stop("'rDNA_chr' must be a single non-empty character string.",
+         call. = FALSE)
+  }
+  
   results_df <- S4Vectors::DataFrame(
     Sample_ID = character(num_samples),
     Genome_Depth = numeric(num_samples),
     rDNA_Depth = numeric(num_samples),
     Absolute_rDNA_CN = numeric(num_samples)
   )
-
+  
   ploidy_factor <- if (diploid) 2 else 1
-
-  for (i in seq_len(num_samples))
-  {
-    # Retrieve sample data using the methylKit accessor
-    sample_data <- methylKit::getData(Meth_object[[i]])
-
-    if (autosomes)
-    {
-      chr_data <- sample_data[
-        sub("^chr", "", sample_data$chr) %in%
-          as.character(seq_len(19)),
-        ,
-        drop = FALSE
-      ]
-    } else
-    {
-      chr_data <- sample_data
+  
+  for (i in seq_len(num_samples)) {
+    sample <- Meth_object[[i]]
+    
+    # Extract data and sample ID
+    sample_data <- methylKit::getData(sample)
+    sample_id <- methylKit::getSampleID(sample)
+  
+    chromosomes <- as.character(sample_data$chr)
+    rdna_rows <- chromosomes %in% rDNA_chr
+    
+    if (autosomes) {
+      reference_rows <- sub("^chr", "", chromosomes) %in%
+        as.character(seq_len(19))
+    } else {
+      reference_rows <- !is.na(chromosomes) & !rdna_rows
     }
-
-    rDNA_data <- sample_data[
-      sample_data$chr %in% rDNA_chr,
-      ,
-      drop = FALSE
-    ]
-
-    cov_wgenome <- mean(chr_data$coverage, na.rm = TRUE)
-    cov_rDNA <- mean(rDNA_data$coverage, na.rm = TRUE)
-
-    results_df$Sample_ID[i] <-
-      methylKit::getSampleID(Meth_object[[i]])
+    
+    cov_wgenome <- mean(
+      sample_data$coverage[reference_rows],
+      na.rm = TRUE
+    )
+    
+    cov_rDNA <- mean(
+      sample_data$coverage[rdna_rows],
+      na.rm = TRUE
+    )
+    
+    results_df$Sample_ID[i] <- sample_id
     results_df$Genome_Depth[i] <- cov_wgenome
     results_df$rDNA_Depth[i] <- cov_rDNA
-    results_df$Absolute_rDNA_CN[i] <-
+    results_df$Absolute_rDNA_CN[i] <- 
       ploidy_factor * cov_rDNA / cov_wgenome
   }
-
+  
   return(results_df)
 }
