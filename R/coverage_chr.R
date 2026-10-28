@@ -45,34 +45,62 @@
 coverage_chr <- function(
     meth_object,
     num_samples,
-    chromosome_names
-) {
-    results <- data.frame(
-        chromosome = character(),
-        sample = numeric(),
-        avg_coverage = numeric(),
-        stringsAsFactors = FALSE
+    chromosome_names)
+{
+  # Basic input checks
+  if (!(is.list(meth_object) ||
+        methods::is(meth_object, "methylRawList")) ||
+      length(meth_object) == 0L) {
+    stop("'meth_object' must be a non-empty list or methylRawList.",
+         call. = FALSE)
+  }
+  
+  if (!is.numeric(num_samples) ||
+      length(num_samples) != 1L ||
+      !is.finite(num_samples) ||
+      num_samples < 1 ||
+      num_samples != floor(num_samples) ||
+      num_samples > length(meth_object)) {
+    stop(
+      "'num_samples' must be a positive whole number no greater",
+      "than the number of samples.",
+      call. = FALSE
     )
-    for (chromo in chromosome_names) {
-      for (i in seq_len(num_samples)) {
-        chr_cov <- meth_object[[i]][meth_object[[i]]$chr == chromo, ]
-        # Filter for coverage >= 10
-        chr_cov_filtered <- chr_cov[chr_cov$coverage >= 10, ]
-        # Calculate average coverage for filtered data
-        avg_chr_cov <- base::mean(chr_cov_filtered$coverage, na.rm = TRUE)
-        # Append the results to the data frame
-        results <- rbind(results, data.frame(
-          chromosome = chromo,
-          sample = i,
-          avg_coverage = avg_chr_cov
-        ))
-      }
-    }
+  }
+  
+  if (!is.character(chromosome_names) ||
+      length(chromosome_names) == 0L ||
+      anyNA(chromosome_names) ||
+      any(!nzchar(chromosome_names))) {
+    stop("'chromosome_names' must be a non-empty character vector",
+         "without missing or empty names.",
+         call. = FALSE)
+  }
+  
+  # Retrieve data using the methylKit accessor
+  sample_data <- lapply(seq_len(num_samples), function(i) {
+    methylKit::getData(meth_object[[i]])
+  })
+  
+  chromosome_names <- unique(chromosome_names)
+  
+  # Calculate average coverage for each chromosome
+  avg_coverage <- vapply(chromosome_names, function(chromo) {
+    sample_means <- vapply(sample_data, function(dat) {
+      keep <- dat$chr %in% chromo &
+        !is.na(dat$coverage) &
+        dat$coverage >= 10
+      
+      mean(dat$coverage[keep], na.rm = TRUE)
+    }, numeric(1))
     
-    # Calculate the average coverage for each chromosome across all samples
-    avg_coverage_per_chromosome <- stats::aggregate(avg_coverage ~ chromosome,
-                                          data = results,
-                                          FUN = base::mean)
-
-    return(avg_coverage_per_chromosome)
+    mean(sample_means, na.rm = TRUE)
+  }, numeric(1))
+  
+  return(
+    S4Vectors::DataFrame(
+      chromosome = chromosome_names,
+      avg_coverage = unname(avg_coverage)
+    )
+  )
 }
