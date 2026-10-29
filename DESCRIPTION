@@ -1,6 +1,6 @@
 Package: myoRDNA
 Title: Tools for Calculating for rDNA in Muscle Sequencing Data
-Version: 0.99.0
+Version: 0.99.2
 Authors@R: c(
     person(
       given = "Daniel", 
