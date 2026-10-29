@@ -31,6 +31,8 @@ Config/roxygen2/version: 8.1.1
 Suggests:
     BiocStyle,
     knitr,
-    rmarkdown
+    rmarkdown,
+    testthat (>= 3.0.0)
+Config/testthat/edition: 3
 VignetteBuilder: knitr
 biocViews: Software, DNAMethylation, Epigenetics, CopyNumberVariation, Sequencing, Coverage
