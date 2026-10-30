@@ -1,24 +1,25 @@
-#' Computes the aggregate methylation for a specified genomic region across 
-#' samples, grouped by their respective conditions.
+#' Aggregate methylated and unmethylated counts within a genomic region
 #'
-#' @param region_res A nested list where each top-level element is a sample 
-#' (e.g., `region_res$SRR28431752$18S$numCs`).
-#' @param region A string specifying the region of interest (e.g., `"18S"`).
-#' @param conditions A named list where each name is a condition 
-#' (e.g., `OLD`, `YOUNG`) and each element is a vector of sample IDs belonging 
-#' to that condition.
-#' @param med A logical value indicating whether to compute the median 
-#' (if `TRUE`) or the mean (if `FALSE`) for the aggregate methylation values. 
-#' Default is `FALSE`.
-#' 
-#' @return A dataframe with columns:
+#' Sums numCs and numTs across sites within the specified region for each
+#' sample, grouped by condition.
+#'
+#' @param region_res A nested list where each top-level element is a sample
+#'   (e.g., \code{region_res[["SRR28431752"]][["18S"]][["numCs"]]}).
+#' @param region A string specifying the region of interest (e.g., "18S").
+#' @param conditions A named list where each name is a condition
+#'   (e.g., OLD or YOUNG) and each element is a character vector of sample
+#'   IDs belonging to that condition.
+#'
+#' @return An \code{S4Vectors::DataFrame} with columns:
 #' \describe{
-#'   \item{sample_ID:}{The sample identifier.}
-#'   \item{condition:}{The condition to which the sample belongs.}
-#'   \item{aggregate_meth:}{The aggregate methylation value for the 
-#'   specified region.}
+#'   \item{Sample_ID}{The sample identifier.}
+#'   \item{Condition}{The condition to which the sample belongs.}
+#'   \item{aggregate_numCs}{The sum of methylated counts within the region,
+#'     excluding missing values.}
+#'   \item{aggregate_numTs}{The sum of unmethylated counts within the region,
+#'     excluding missing values.}
 #' }
-#'
+#' 
 aggregate_numCs_numTs_region <- function(
     region_res,
     region,

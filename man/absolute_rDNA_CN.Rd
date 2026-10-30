@@ -29,8 +29,8 @@ or data frames, where each element represents a sample and contains columns
 \item{rDNA_chr}{- A character string specifying the name of the rDNA 
 chromosome (e.g., `"chrRDNAm"`).}
 
-\item{diploid}{- A logical (`TRUE`/`FALSE`) indicating whether the genome is 
-**diploid** (2 copies of each chromosome).
+\item{diploid}{- A logical (`TRUE`/`FALSE`) indicating whether the genome 
+is **diploid** (2 copies of each chromosome).
   If `TRUE`, the absolute rDNA copy number is multiplied by 2. Default: 
   `TRUE`.}
 }
